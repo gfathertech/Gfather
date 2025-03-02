@@ -1,13 +1,17 @@
-
 import "./config.js";
 import fs from 'fs';
 import util from 'util';
 import axios from 'axios';
 import { exec } from "child_process";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { 
+  NEXORACLE_API_KEY,
+  GEMINI_API_KEY,
+  DEEPSEEK_API_KEY,
+  GPT4O_API_KEY
+} from './config.js';
+
 const api = 'https://api.nexoracle.com/';
-const apikey = '02b6bbd6d6335ff436';
-//import {cheerio} from 'cheerio';
 
 const handler = async (Gfather, m) => {
     try {
@@ -38,7 +42,7 @@ const handler = async (Gfather, m) => {
         switch (command) {
             case "menu":
                 m.reply(`
-Hello  ${pushname}, welcome.
+Hello ${pushname}, welcome.
 
 ʙᴏᴛ : ${global.namabot}
 ɴᴏ ᴏᴡɴᴇʀ : ${global.owner}
@@ -49,70 +53,52 @@ FEATURES
 
 > GEMINI
 > DEEP SEEK 
+> GPT-4o
 > PING 
 `);
                 break;
-                
-                
-              case "gemini":
 
+            case "gemini":
                 if (!text) return m.reply("What do you want to ask me?");
-            try {
-                const genAI = new GoogleGenerativeAI(`AIzaSyDrmJIR3tJ4p2hHNx0MP9AStjYNGWNT8mM`);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
+                try {
+                    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                     const result = await model.generateContent(text);
                     const response = await result.response.text();
                     m.reply(response);
-console.log(m.reply);
-                    } catch (error) {
+                } catch (error) {
                     console.error("Gemini Error:", error);
                     m.reply("Failed to process your AI request, please try again later");
-                    }
-                    break;
+                }
+                break;
 
-    case "deepseek":
-    if (!text) return m.reply("Please provide content");
-    try {
-        const { data } = await axios.get(   `https://wanzofc.us.kg/api/ai/deepseek-chat?content=${encodeURIComponent(text)}&apikey=PxwGu5LL`
-        );
-        const responseText = data.data?.toString() || "No valid response from AI";
-        console.log(`responseText: ${responseText}`);
-        console.log(`Data: ${data}`);
-        m.reply(responseText);
-    } catch (error) {
-        console.error('AI Error:', error);
-        m.reply(`Error: ${error.message}`);
-    }
-    break;        
+            case "deepseek":
+                if (!text) return m.reply("Please provide content");
+                try {
+                    const { data } = await axios.get(
+                        `https://wanzofc.us.kg/api/ai/deepseek-chat?content=${encodeURIComponent(text)}&apikey=${DEEPSEEK_API_KEY}`
+                    );
+                    const responseText = data.data?.toString() || "No valid response from AI";
+                    m.reply(responseText);
+                } catch (error) {
+                    console.error('DeepSeek Error:', error);
+                    m.reply(`Error: ${error.message}`);
+                }
+                break;
 
-
-
-    case "gpt4o":
-    if (!text) return m.reply("Please provide content");
-    try {
-        const { data } = await axios.get(   `https://wanzofc.us.kg/api/ai/gpt4omini?q=${encodeURIComponent(text)}&apikey=PxwGu5LL`
-        );
-        const responseText = data.data.result?.toString() || "No valid response from AI";
-        console.log(`responseText: ${responseText}`);
-        console.log(`Data: ${data}`);
-        m.reply(responseText);
-    } catch (error) {
-        console.error('AI Error:', error);
-        m.reply(`Error: ${error.message}`);
-    }
-    break;
-
-
-
-
-
-
-
-                
-
-
-                
+            case "gpt4o":
+                if (!text) return m.reply("Please provide content");
+                try {
+                    const { data } = await axios.get(
+                        `https://wanzofc.us.kg/api/ai/gpt4omini?q=${encodeURIComponent(text)}&apikey=${GPT4O_API_KEY}`
+                    );
+                    const responseText = data.data.result?.toString() || "No valid response from AI";
+                    m.reply(responseText);
+                } catch (error) {
+                    console.error('GPT-4o Error:', error);
+                    m.reply(`Error: ${error.message}`);
+                }
+                break;
 
             case "ping":
                 if (!text) return m.reply(`PONG; ${m}, ${Gfather}, ${body}`);
@@ -121,9 +107,10 @@ console.log(m.reply);
             case "aii":
                 if (!text) return m.reply("Mau nanya apa sama ai");
                 try {
-                    let { data } = await axios.get(`https://itzpire.site/ai/gpt-web?q=${text}`);
+                    let { data } = await axios.get(
+                        `https://itzpire.site/ai/gpt-web?q=${text}&apikey=${NEXORACLE_API_KEY}`
+                    );
                     m.reply(data);
-                    console.log(data);
                 } catch (error) {
                     m.reply("Error fetching AI response.");
                 }
@@ -141,7 +128,7 @@ console.log(m.reply);
                         return m.reply(bang);
                     }
                     try {
-                        m.reply(util.format(await eval((async () => { return `${budy.slice(3)}` })())));
+                        m.reply(util.format(await eval((async () => { return `${budy.slice(3)}` })()));
                     } catch (e) {
                         m.reply(String(e));
                     }
