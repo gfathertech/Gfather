@@ -172,7 +172,14 @@ setInterval(async () => {
     return m;
   }
 
-
+// Add to your existing Express setup
+app.get('/ping', (req, res) => {
+  res.status(200).json({
+    status: 'active',
+    region: 'nigeria',
+    version: '1.0.0'
+  });
+});
 
 
 
