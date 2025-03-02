@@ -7,8 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { 
   NEXORACLE_API_KEY,
   GEMINI_API_KEY,
-  DEEPSEEK_API_KEY,
-  GPT4O_API_KEY
+  WANZOFC
 } from './config.js';
 
 const api = 'https://api.nexoracle.com/';
@@ -76,7 +75,7 @@ FEATURES
                 if (!text) return m.reply("Please provide content");
                 try {
                     const { data } = await axios.get(
-                        `https://wanzofc.us.kg/api/ai/deepseek-chat?content=${encodeURIComponent(text)}&apikey=${DEEPSEEK_API_KEY}`
+                        `https://wanzofc.us.kg/api/ai/deepseek-chat?content=${encodeURIComponent(text)}&apikey=${WANZOFC}`
                     );
                     const responseText = data.data?.toString() || "No valid response from AI";
                     m.reply(responseText);
@@ -90,7 +89,7 @@ FEATURES
                 if (!text) return m.reply("Please provide content");
                 try {
                     const { data } = await axios.get(
-                        `https://wanzofc.us.kg/api/ai/gpt4omini?q=${encodeURIComponent(text)}&apikey=${GPT4O_API_KEY}`
+                        `https://wanzofc.us.kg/api/ai/gpt4omini?q=${encodeURIComponent(text)}&apikey=${WANZOFC}`
                     );
                     const responseText = data.data.result?.toString() || "No valid response from AI";
                     m.reply(responseText);
