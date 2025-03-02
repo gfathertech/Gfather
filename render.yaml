@@ -1,0 +1,26 @@
+
+services:
+  - type: web
+    name: Gfather
+    env: node
+    plan: free
+    region: frankfurt
+
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        generateValue: true  # You'll set actual value in Render dashboard
+    healthCheckPath: /ping
+    autoDeploy: true
+    repo:
+      url: https://github.com/gfathertech/Gfather
+      branch: main
+    routes:
+      - type: path
+        path: /*
+        destination: Gfather
