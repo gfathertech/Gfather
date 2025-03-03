@@ -5,7 +5,7 @@ const {
     DisconnectReason, 
     makeInMemoryStore, 
     initAuthCreds,
-    KeyedDB,
+    Utils,
     useSingleFileAuthState 
 } = pkg;
 import pino from "pino";
@@ -14,7 +14,8 @@ import axios from "axios";
 import pool from "./db.js";
 import handleMessage from "./case.js";
 import https from 'https';
-const messageRetryCache = new KeyedDB(
+const { KeyedDB } = Utils;
+const messageRetryCache = new KeyedDB (
     {
         make: (m) => m.key.id,
         compare: (a, b) => (a === b ? 0 : (a < b ? -1 : 1))
