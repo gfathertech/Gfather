@@ -90,6 +90,8 @@ export async function startBot() {
         // Connection State Management
         Gfather.ev.on("connection.update", async (update) => {
             const { connection, lastDisconnect } = update;
+// Add to bot.js connection.update handler
+   console.log('Connection update:', JSON.stringify(update));
             
             if (connection === "open") {
                 console.log(`✅ Connected as ${Gfather.user.id}`);
