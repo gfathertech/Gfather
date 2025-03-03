@@ -25,10 +25,22 @@ async function saveSession(id, data) {
     }
 }
 
+
 async function loadSession(id) {
     try {
         const res = await pool.query(`SELECT data FROM sessions WHERE id = $1`, [id]);
-        return res.rows[0]?.data ? JSON.parse(res.rows[0].data) : null;
+        const data = res.rows[0]?.data;
+        
+        // Handle invalid JSON data
+        if (typeof data === 'object') return data; // Already parsed
+        if (typeof data === 'string') {
+            try {
+                return JSON.parse(data);
+            } catch {
+                return null;
+            }
+        }
+        return null;
     } catch (error) {
         console.error("❌ Failed to load session:", error.message);
         return null;
