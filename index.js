@@ -16,11 +16,12 @@ import proto from "@whiskeysockets/baileys";
 import PhoneNumber from 'awesome-phonenumber';
 
 // Load phone number from environment variable (Set this in Koyeb Dashboard)
-const ph = process.env.PHONE_NUMBER;
-if (!ph) {
-    console.error("❌ PHONE_NUMBER environment variable is missing.");
-    process.exit(1);
-}
+const ph = '+2349136429929';
+//if (!ph) {
+   // console.error("❌ PHONE_NUMBER 
+//environment variable is missing.");
+   // process.exit(1);
+//}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
