@@ -7,14 +7,6 @@ import {
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import axios from "axios";
-import pkg from "pg";
-const { Pool } = pkg;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { 
-    rejectUnauthorized: false 
-  } : false
-});
 
 import handleMessage from "./case.js";
 
