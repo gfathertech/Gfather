@@ -4,7 +4,7 @@ export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDrmJIR3tJ4p2h
 export const WANZOFC = process.env.WANZOFC || "PxwGu5LL";
 
 export const global = {
-    namabot: "YourBot",
+    namabot: "Gfather",
     owner: [process.env.OWNER_NUMBER || "your-number@s.whatsapp.net"],
     version: "1.0.0",
     developer: "Gfather"
