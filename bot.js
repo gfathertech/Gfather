@@ -9,6 +9,8 @@ import { Boom } from "@hapi/boom";
 import axios from "axios";
 import pool from "./db.js";
 import handleMessage from "./case.js";
+import https from 'https';
+import { KeyedDB } from '@whiskeysockets/baileys';
 
 let Gfather = null; // Global socket instance
 let keepAliveInterval = null;
