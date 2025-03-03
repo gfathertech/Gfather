@@ -32,23 +32,24 @@ async function saveSession(id, data) {
 }
 
 
+// Update loadSession() in bot.js
 async function loadSession(id) {
     try {
         const res = await pool.query(`SELECT data FROM sessions WHERE id = $1`, [id]);
-        const data = res.rows[0]?.data;
+        const rawData = res.rows[0]?.data;
         
-        // Handle invalid JSON data
-        if (typeof data === 'object') return data; // Already parsed
-        if (typeof data === 'string') {
+        // Handle invalid JSON format
+        if (typeof rawData === 'string') {
             try {
-                return JSON.parse(data);
+                return JSON.parse(rawData);
             } catch {
+                await pool.query('DELETE FROM sessions WHERE id = $1', [id]);
                 return null;
             }
         }
-        return null;
+        return rawData || null;
     } catch (error) {
-        console.error("❌ Failed to load session:", error.message);
+        console.error("❌ Session load error:", error.message);
         return null;
     }
 }
