@@ -1,9 +1,13 @@
-import {
-    makeWASocket,
-    DisconnectReason,
-    makeInMemoryStore,
-    initAuthCreds
-} from "@whiskeysockets/baileys";
+
+import pkg from '@whiskeysockets/baileys';
+const { 
+    makeWASocket, 
+    DisconnectReason, 
+    makeInMemoryStore, 
+    initAuthCreds,
+    KeyedDB,
+    useSingleFileAuthState 
+} = pkg;
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import axios from "axios";
@@ -11,6 +15,13 @@ import pool from "./db.js";
 import handleMessage from "./case.js";
 import https from 'https';
 import { KeyedDB } from '@whiskeysockets/baileys';
+const messageRetryCache = new KeyedDB(
+    {
+        make: (m) => m.key.id,
+        compare: (a, b) => (a === b ? 0 : (a < b ? -1 : 1))
+    },
+    "asc"
+);
 
 let Gfather = null; // Global socket instance
 let keepAliveInterval = null;
@@ -77,40 +88,36 @@ export async function startBot() {
             await saveSession("whatsapp", state);
         };
 
-        // Configure WhatsApp socket
-        const store = makeInMemoryStore({ logger: pino().child({ level: "silent" }) });
-        Gfather = makeWASocket({
+       // Configure WhatsApp socket
+const store = makeInMemoryStore({ logger: pino().child({ level: "silent" }) });
+
+const Gfather = makeWASocket({
     logger: pino({ level: "silent" }),
     printQRInTerminal: false,
     auth: state,
-    connectTimeoutMs: 45000,  // Increased for cloud environments
+    connectTimeoutMs: 45000,
     keepAliveIntervalMs: 25000,
-    browser: ["Ubuntu", "Chrome", "121.0.0.0"], // Updated browser version
-    markOnlineOnConnect: false, // Avoid immediate "online" status
-    mobile: false, // Desktop-style connection
+    browser: ["Ubuntu", "Chrome", "121.0.0.0"],
+    markOnlineOnConnect: false,
+    mobile: false,
     syncFullHistory: false,
     transactionOpts: {
         maxCommitRetries: 3,
         delayBetweenTriesMs: 3000
     },
-    getMessage: async (key) => {
-        return {} // Bypass message history
-    },
+    getMessage: async () => ({}),
     fetchAgent: new https.Agent({ 
         keepAlive: true,
-        rejectUnauthorized: false // Bypass SSL validation issues
+        rejectUnauthorized: false
     }),
     retryRequestDelayMs: 2000,
     maxMsgRetryCount: 5,
     defaultQueryTimeoutMs: 60000,
-    version: [2, 2413, 1], // Specific WhatsApp version
-    phoneResponseTime: 30000, // Wait longer for pairing response
-    linkPreviewImageThumbnailWidth: 192, // Reduce bandwidth usage
-    msgRetryCounterCache: new KeyedDB({
-        make: (m) => m.key.id,
-        compare: (a, b) => (a === b ? 0 : (a < b ? -1 : 1))
-    }),
-    qrTimeout: 120000, // 2 minute pairing window
+    version: [2, 2413, 1],
+    phoneResponseTime: 30000,
+    linkPreviewImageThumbnailWidth: 192,
+    msgRetryCounterCache: messageRetryCache,
+    qrTimeout: 120000,
     keepAliveReqTimeout: 15000,
     emitOwnEvents: false,
     deviceInfo: {
