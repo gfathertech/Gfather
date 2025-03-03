@@ -1,17 +1,19 @@
-
 import { startBot } from "./bot.js";
 import express from "express";
 import initDB from "./initdb.js";
 
-const PORT = process.env.PORT || 3000;
-
 const app = express();
-app.get("/ping", (req, res) => res.status(200).send("pong"));
+app.get("/ping", (req, res) => res.sendStatus(200));
 
-// Initialize database first
-initDB().then(() => {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`✅ Server running on port ${PORT}`);
-    startBot();
-  });
-});
+(async () => {
+  try {
+    await initDB();
+    app.listen(process.env.PORT || 3000, () => {
+      console.log(`✅ Server running on port ${process.env.PORT || 3000}`);
+      startBot();
+    });
+  } catch (error) {
+    console.error('❌ Fatal initialization error:', error.message);
+    process.exit(1);
+  }
+})();
