@@ -1,9 +1,10 @@
 import {
     makeWASocket,
     DisconnectReason,
-    makeInMemoryStore,
-    useMultiAuthState
+    makeInMemoryStore
 } from "@whiskeysockets/baileys";
+const baileys = await import("@whiskeysockets/baileys");  
+const { useMultiAuthState } = baileys; 
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import axios from "axios";
