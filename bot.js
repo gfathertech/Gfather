@@ -14,7 +14,6 @@ import axios from "axios";
 import pool from "./db.js";
 import handleMessage from "./case.js";
 import https from 'https';
-import { KeyedDB } from '@whiskeysockets/baileys';
 const messageRetryCache = new KeyedDB(
     {
         make: (m) => m.key.id,
