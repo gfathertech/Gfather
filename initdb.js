@@ -2,7 +2,10 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { 
+    rejectUnauthorized: false 
+  } : false
 });
 
 async function initDB() {
@@ -13,10 +16,12 @@ async function initDB() {
         data JSONB NOT NULL
       )
     `);
-    console.log('✅ Session table created/verified');
+    console.log('✅ Session table verified');
   } catch (error) {
-    console.error('❌ Error creating session table:', error);
+    console.error('❌ DB Error:', error.message);
     process.exit(1);
+  } finally {
+    await pool.end();
   }
 }
 
