@@ -15,10 +15,16 @@ let keepAliveInterval = null;
 
 async function saveSession(id, data) {
     try {
+        // Validate session data
+        const validatedData = {
+            creds: data.creds || {},
+            keys: data.keys || {}
+        };
+        
         await pool.query(
             `INSERT INTO sessions (id, data) VALUES ($1, $2)
             ON CONFLICT (id) DO UPDATE SET data = $2`,
-            [id, JSON.stringify(data)]
+            [id, JSON.stringify(validatedData)]
         );
     } catch (error) {
         console.error("❌ Failed to save session:", error.message);
