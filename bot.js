@@ -5,7 +5,6 @@ const {
     DisconnectReason, 
     makeInMemoryStore, 
     initAuthCreds,
-    Utils,
     useSingleFileAuthState 
 } = pkg;
 import pino from "pino";
@@ -14,7 +13,7 @@ import axios from "axios";
 import pool from "./db.js";
 import handleMessage from "./case.js";
 import https from 'https';
-const { KeyedDB } = Utils;
+const { KeyedDB } = '@whiskeysockets/baileys';
 const messageRetryCache = new KeyedDB(
     {
         make: (m) => m.key.id,
