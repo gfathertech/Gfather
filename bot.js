@@ -15,14 +15,13 @@ import pool from "./db.js";
 import handleMessage from "./case.js";
 import https from 'https';
 const { KeyedDB } = Utils;
-const messageRetryCache = new KeyedDB (
+const messageRetryCache = new KeyedDB(
     {
         make: (m) => m.key.id,
-        compare: (a, b) => (a === b ? 0 : (a < b ? -1 : 1))
+        compare: (a, b) => a.localeCompare(b)
     },
     "asc"
 );
-
 let Gfather = null; // Global socket instance
 let keepAliveInterval = null;
 
