@@ -1,132 +1,108 @@
-import {
-    makeWASocket,
-    DisconnectReason,
-    makeInMemoryStore,
-    initAuthCreds
-} from "@whiskeysockets/baileys";
-import pino from "pino";
-import { Boom } from "@hapi/boom";
-import axios from "axios";
-import pool from "./db.js";
-import handleMessage from "./case.js";
+import { makeWASocket, DisconnectReason, initAuthCreds } from '@whiskeysockets/baileys';
+import { session } from './db.js';
+import pino from 'pino';
 
-let Gfather = null;
-let keepAliveInterval = null;
-
-async function saveSession(id, data) {
-    try {
-        await pool.query(
-            `INSERT INTO sessions (id, data) VALUES ($1, $2)
-            ON CONFLICT (id) DO UPDATE SET data = $2`,
-            [id, JSON.stringify(data)]
-        );
-    } catch (error) {
-        console.error("❌ Failed to save session:", error.message);
-    }
-}
-
-async function loadSession(id) {
-    try {
-        const res = await pool.query(`SELECT data FROM sessions WHERE id = $1`, [id]);
-        return res.rows[0]?.data ? JSON.parse(res.rows[0].data) : null;
-    } catch (error) {
-        console.error("❌ Failed to load session:", error.message);
-        return null;
-    }
-}
+let socket = null;
+let pairingCode = null;
+let reconnectAttempts = 0;
 
 export async function startBot() {
-    console.log("🔄 Initializing WhatsApp connection...");
-    
-    try {
-        if (Gfather) {
-            Gfather.ev.removeAllListeners();
-            if (keepAliveInterval) clearInterval(keepAliveInterval);
-        }
-
-        const savedData = await loadSession("whatsapp");
-        const state = {
-            creds: savedData?.creds || initAuthCreds(),
-            keys: savedData?.keys || {}
-        };
-
-        const saveCreds = async () => {
-            await saveSession("whatsapp", state);
-        };
-
-        const store = makeInMemoryStore({ logger: pino().child({ level: "silent" }) });
-        Gfather = makeWASocket({
-            logger: pino({ level: "silent" }),
-            printQRInTerminal: false,
-            auth: state,
-            connectTimeoutMs: 45000,
-            keepAliveIntervalMs: 25000,
-            browser: ["Ubuntu", "Chrome", "121.0.0.0"],
-            fetchAgent: new (await import('https')).Agent({ 
-                keepAlive: true,
-                rejectUnauthorized: false
-            })
-        });
-
-        store.bind(Gfather.ev);
-
-        Gfather.ev.on("connection.update", async (update) => {
-            const { connection, lastDisconnect } = update;
-            
-            if (connection === "open") {
-                console.log(`✅ Connected as ${Gfather.user.id}`);
-                keepAliveInterval = setInterval(async () => {
-                    try {
-                        await axios.get(`${process.env.KEEP_ALIVE_URL}/ping`);
-                        console.log("🫀 Keep-alive successful");
-                    } catch (error) {
-                        console.error("💔 Keep-alive failed:", error.message);
-                    }
-                }, 80000);
-            }
-
-            if (connection === "close") {
-                const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-                console.error(`❌ Connection closed (${reason}): ${DisconnectReason[reason] || "Unknown"}`);
-                
-                const retries = parseInt(process.env.CONNECTION_RETRIES || "0");
-                const delay = Math.min(1000 * 2 ** retries, 30000);
-                
-                setTimeout(() => {
-                    console.log(`🔄 Reconnecting (attempt ${retries + 1})...`);
-                    process.env.CONNECTION_RETRIES = (retries + 1).toString();
-                    startBot();
-                }, delay);
-            }
-        });
-
-        if (!state.creds.registered) {
-            console.log("📡 Requesting pairing code...");
-            try {
-                const code = await Gfather.requestPairingCode(process.env.PHONE_NUMBER);
-                console.log(`🔑 Pairing Code: ${code.replace(/(\d{4})(?=\d)/g, '$1-')}`);
-                await new Promise(resolve => setTimeout(resolve, 120000));
-            } catch (error) {
-                console.error("❌ Pairing failed:", error.message);
-                await pool.query('DELETE FROM sessions WHERE id = $1', ['whatsapp']);
-                startBot();
-            }
-        }
-
-        Gfather.ev.on("creds.update", saveCreds);
-
-        Gfather.ev.on("messages.upsert", async ({ messages }) => {
-            try {
-                const m = messages[0];
-                if (!m.message || m.key.remoteJid === "status@broadcast") return;
-                await handleMessage(Gfather, m);
-            } catch (error) {
-                console.error("❌ Message handling error:", error.message);
-            }
-        });
-
-    } catch (error) {
-        console.error("🔥 Critical error:", error.message);
-        process.exit(1);
+  try {
+    // Cleanup previous connection
+    if (socket) {
+      socket.end();
+      socket = null;
     }
+
+    // Load or create session
+    const sessionId = 'whatsapp';
+    const savedData = await session.load(sessionId);
+    const state = {
+      creds: savedData?.creds || initAuthCreds(),
+      keys: savedData?.keys || {}
+    };
+
+    // Create new connection
+    socket = makeWASocket({
+      logger: pino({ level: 'silent' }),
+      printQRInTerminal: false,
+      auth: state,
+      browser: ['Bot Server', 'Chrome', '121.0.0.0'],
+      connectTimeoutMs: 30000,
+      keepAliveIntervalMs: 15000,
+    });
+
+    // Setup event handlers
+    socket.ev.on('creds.update', () => session.save(sessionId, state));
+    socket.ev.on('connection.update', update => handleConnectionUpdate(update, sessionId));
+
+    // Handle initial connection
+    if (!state.creds.registered) {
+      pairingCode = await socket.requestPairingCode(process.env.PHONE_NUMBER);
+      console.log(`🔑 Pairing Code: ${formatPairingCode(pairingCode)}`);
+      
+      // 2-minute pairing window
+      setTimeout(() => {
+        if (!socket.user?.id) {
+          console.log('⏰ Pairing window expired');
+          restartBot();
+        }
+      }, 120000);
+    }
+
+    return socket;
+
+  } catch (error) {
+    console.error('🔥 Bot startup error:', error.message);
+    restartBot();
+  }
 }
+
+const handleConnectionUpdate = (update, sessionId) => {
+  const { connection, lastDisconnect } = update;
+  
+  if (connection === 'open') {
+    console.log('✅ WhatsApp connected');
+    reconnectAttempts = 0;
+    pairingCode = null;
+  }
+
+  if (connection === 'close') {
+    const reason = lastDisconnect?.error?.output?.statusCode || DisconnectReason.connectionClosed;
+    console.log(`❌ Disconnected (${DisconnectReason[reason] || reason})`);
+
+    if (shouldReconnect(reason)) {
+      const delay = Math.min(30000, 2000 * (2 ** reconnectAttempts));
+      console.log(`🔄 Reconnecting in ${delay}ms...`);
+      setTimeout(startBot, delay);
+      reconnectAttempts++;
+    } else {
+      console.log('🔴 Permanent connection failure');
+      session.clear(sessionId);
+      process.exit(1);
+    }
+  }
+};
+
+const shouldReconnect = (reason) => {
+  return [
+    DisconnectReason.connectionClosed,
+    DisconnectReason.connectionLost,
+    DisconnectReason.restartRequired,
+    DisconnectReason.timedOut
+  ].includes(reason);
+};
+
+const formatPairingCode = (code) => {
+  return code.match(/.{1,4}/g).join('-');
+};
+
+const restartBot = () => {
+  if (reconnectAttempts < 5) {
+    console.log('🔄 Restarting bot...');
+    startBot();
+  } else {
+    console.error('🔴 Maximum restart attempts reached');
+    process.exit(1);
+  }
+};
