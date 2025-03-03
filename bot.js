@@ -7,7 +7,7 @@ import {
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import axios from "axios";
-
+import { pool } from './db.js';
 import handleMessage from "./case.js";
 
 
