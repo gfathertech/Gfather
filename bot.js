@@ -106,6 +106,19 @@ export async function startBot() {
                     }
                 }, 80000);
             }
+// Add after connection.open event
+Gfather.ev.on('connection.update', async (update) => {
+    if (update.connection === 'open') {
+       
+        try {
+            await Gfather.fetchBlocklist();
+            console.log("✅ Verified WhatsApp connection");
+        } catch (error) {
+            console.error("❌ Connection verification failed:", error.message);
+            Gfather.end();
+        }
+    }
+});
 
             if (connection === "close") {
                 const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
