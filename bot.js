@@ -10,8 +10,6 @@ import axios from "axios";
 
 import handleMessage from "./case.js";
 
-// Database setup
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function saveSession(id, data) {
     await pool.query(
