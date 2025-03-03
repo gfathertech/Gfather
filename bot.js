@@ -7,7 +7,8 @@ import {
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import axios from "axios";
-import { Pool } from "pg";
+import pkg from "pg";
+const { Pool } = pkg;
 import handleMessage from "./case.js"; // ✅ Import command handler
 
 // 🔹 Load environment variables
