@@ -1,21 +1,25 @@
-import { makeWASocket } from "@whiskeysockets/baileys";
+import { useMultiFileAuthState, makeWASocket } from "@whiskeysockets/baileys";
+import fs from "fs";
 import pino from "pino";
 
-async function testConnection() {
-    console.log("🔍 Testing WhatsApp Connection...");
-    const socket = makeWASocket({
-        logger: pino({ level: "silent" }),
-    });
+async function startBotz() {
+    const sessionPath = "/tmp/session";
+    if (!fs.existsSync(sessionPath)) {
+        fs.mkdirSync(sessionPath, { recursive: true });
+    }
 
-    socket.ev.on("connection.update", ({ connection }) => {
-        if (connection === "open") {
-            console.log("✅ Connection to WhatsApp successful!");
-            process.exit(0);
-        } else if (connection === "close") {
-            console.error("❌ Connection closed.");
-            process.exit(1);
-        }
-    });
+    try {
+        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+        const Gfather = makeWASocket({
+            logger: pino({ level: "silent" }),
+            auth: state
+        });
+
+        Gfather.ev.on("creds.update", saveCreds);
+        console.log("✅ WhatsApp bot started successfully!");
+    } catch (error) {
+        console.error("❌ Error initializing WhatsApp bot:", error.message);
+    }
 }
 
-testConnection();
+startBotz();
