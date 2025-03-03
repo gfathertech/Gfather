@@ -1,4 +1,6 @@
 import "./config.js";
+import pool from './db.js';
+// Use pool where needed
 import axios from "axios";
 import { exec } from "child_process";
 import { GoogleGenerativeAI } from "@google/generative-ai";
