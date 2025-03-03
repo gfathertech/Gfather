@@ -120,20 +120,28 @@ export async function startBot() {
             }
         });
 
-        // Pairing Code Flow
-        if (!state.creds.registered) {
-            console.log("📡 Requesting pairing code...");
-            try {
-                const code = await Gfather.requestPairingCode(process.env.PHONE_NUMBER);
-                console.log(`🔑 Pairing Code: ${formatPairingCode(code)}`);
-            } catch (error) {
-                console.error("❌ Pairing failed:", error.message);
-                state.creds = initAuthCreds(); // Reset credentials
-                await saveCreds();
-                process.env.CONNECTION_RETRIES = "0";
-                startBot(); // Immediate retry
-            }
+        // Update the pairing code section in bot.js
+if (!state.creds.registered) {
+    console.log("📡 Requesting pairing code...");
+    try {
+        const code = await Gfather.requestPairingCode(process.env.PHONE_NUMBER);
+        console.log(`🔑 Pairing Code: ${formatPairingCode(code)}`);
+        
+        // Add 2 minute timeout for pairing completion
+        await new Promise(resolve => setTimeout(resolve, 120000));
+        
+        // Verify registration status
+        if (!Gfather.user) {
+            throw new Error('Pairing not completed');
         }
+    } catch (error) {
+        console.error("❌ Pairing failed:", error.message);
+        // Full session reset
+        await pool.query('DELETE FROM sessions WHERE id = $1', ['whatsapp']);
+        process.env.CONNECTION_RETRIES = "0";
+        startBot();
+    }
+}
 
         // Credentials Update Handler
         Gfather.ev.on("creds.update", saveCreds);
