@@ -11,7 +11,7 @@ import pkg from "pg";
 const { Pool } = pkg;
 import handleMessage from "./case.js";
 
-// Database setup remains the same
+// Database setup
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function saveSession(id, data) {
@@ -44,7 +44,7 @@ export async function startBot() {
     const store = makeInMemoryStore({ logger: pino().child({ level: "silent" }) });
     const Gfather = makeWASocket({
         logger: pino({ level: "silent" }),
-        printQRInTerminal: true, // Keep this true for QR scanning
+        printQRInTerminal: false, // Keep QR disabled
         auth: state,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 10000,
@@ -53,20 +53,66 @@ export async function startBot() {
 
     store.bind(Gfather.ev);
 
-    // Add connection update handler
-    Gfather.ev.on("connection.update", (update) => {
-        // ... rest of your connection handler code
+    // Connection Handling
+    Gfather.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === "open") {
+            console.log(`✅ Connected to WhatsApp: ${Gfather.user.id}`);
+
+            // Keep-alive mechanism
+            setInterval(async () => {
+                try {
+                    await axios.get(`${process.env.KEEP_ALIVE_URL || "http://localhost:3000"}/ping`);
+                    console.log("✅ Keep-alive successful");
+                } catch (error) {
+                    console.error("❌ Keep-alive failed:", error.message);
+                }
+            }, 80000);
+        }
+
+        if (connection === "close") {
+            const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+            console.error(`❌ Connection closed: ${reason}`);
+            if ([
+                DisconnectReason.badSession, 
+                DisconnectReason.connectionClosed, 
+                DisconnectReason.connectionLost, 
+                DisconnectReason.connectionReplaced, 
+                DisconnectReason.restartRequired, 
+                DisconnectReason.timedOut
+            ].includes(reason)) {
+                console.log("🔄 Restarting bot...");
+                startBot();
+            }
+        }
     });
 
-    // Add credentials update handler
+    // Pairing Code Handling
+    if (!state.creds.registered) {
+        console.log("📡 Requesting pairing code...");
+        try {
+            const code = await Gfather.requestPairingCode(process.env.PHONE_NUMBER);
+            console.log(`🔑 Pairing Code: ${code?.match(/.{1,4}/g)?.join("-") || code}`);
+        } catch (error) {
+            console.error("❌ Error requesting pairing code:", error.message);
+        }
+    }
+
+    // Credentials Update Handler
     Gfather.ev.on("creds.update", saveCreds);
 
-    // Add message handler
-    Gfather.ev.on("messages.upsert", handleMessage);
-    
-    // Request pairing code if needed
-    if (!state.creds.registered) {
-        const code = await Gfather.requestPairingCode(process.env.PHONE_NUMBER);
-        console.log(`Pairing code: ${code}`);
-    }
+    // Message Handling
+    Gfather.ev.on("messages.upsert", async (chatUpdate) => {
+        try {
+            const m = chatUpdate.messages[0];
+            if (!m.message) return;
+
+            m.message = m.message?.ephemeralMessage?.message || m.message;
+            if (m.key?.remoteJid === "status@broadcast") return;
+
+            await handleMessage(Gfather, m, chatUpdate, store);
+        } catch (err) {
+            console.log(err);
+        }
+    });
 }
