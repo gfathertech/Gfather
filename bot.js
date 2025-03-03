@@ -123,25 +123,32 @@ export async function startBot() {
             }
         });
 
-        // Update the pairing code section in bot.js
+      // Update pairing code section in bot.js
 if (!state.creds.registered) {
     console.log("📡 Requesting pairing code...");
     try {
         const code = await Gfather.requestPairingCode(process.env.PHONE_NUMBER);
-        console.log(`🔑 Pairing Code: ${formatPairingCode(code)}`);
+        console.log(`🔑 Enter this code in WhatsApp within 2 minutes: ${formatPairingCode(code)}`);
         
-        // Add 2 minute timeout for pairing completion
-        await new Promise(resolve => setTimeout(resolve, 120000));
-        
-        // Verify registration status
-        if (!Gfather.user) {
-            throw new Error('Pairing not completed');
-        }
+        // Wait for pairing completion
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                Gfather.ev.off('creds.update', checkRegistration);
+                reject(new Error('Pairing timeout'));
+            }, 120000);
+
+            const checkRegistration = () => {
+                if (state.creds.registered) {
+                    clearTimeout(timeout);
+                    resolve();
+                }
+            };
+
+            Gfather.ev.on('creds.update', checkRegistration);
+        });
     } catch (error) {
         console.error("❌ Pairing failed:", error.message);
-        // Full session reset
         await pool.query('DELETE FROM sessions WHERE id = $1', ['whatsapp']);
-        process.env.CONNECTION_RETRIES = "0";
         startBot();
     }
 }
