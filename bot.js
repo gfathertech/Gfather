@@ -78,13 +78,46 @@ export async function startBot() {
         // Configure WhatsApp socket
         const store = makeInMemoryStore({ logger: pino().child({ level: "silent" }) });
         Gfather = makeWASocket({
-            logger: pino({ level: "silent" }),
-            printQRInTerminal: false,
-            auth: state,
-            connectTimeoutMs: 30000,
-            keepAliveIntervalMs: 15000,
-            browser: ["Ubuntu", "Chrome", "20.0.04"],
-        });
+    logger: pino({ level: "silent" }),
+    printQRInTerminal: false,
+    auth: state,
+    connectTimeoutMs: 45000,  // Increased for cloud environments
+    keepAliveIntervalMs: 25000,
+    browser: ["Ubuntu", "Chrome", "121.0.0.0"], // Updated browser version
+    markOnlineOnConnect: false, // Avoid immediate "online" status
+    mobile: false, // Desktop-style connection
+    syncFullHistory: false,
+    transactionOpts: {
+        maxCommitRetries: 3,
+        delayBetweenTriesMs: 3000
+    },
+    getMessage: async (key) => {
+        return {} // Bypass message history
+    },
+    fetchAgent: new https.Agent({ 
+        keepAlive: true,
+        rejectUnauthorized: false // Bypass SSL validation issues
+    }),
+    retryRequestDelayMs: 2000,
+    maxMsgRetryCount: 5,
+    defaultQueryTimeoutMs: 60000,
+    version: [2, 2413, 1], // Specific WhatsApp version
+    phoneResponseTime: 30000, // Wait longer for pairing response
+    linkPreviewImageThumbnailWidth: 192, // Reduce bandwidth usage
+    msgRetryCounterCache: new KeyedDB({
+        make: (m) => m.key.id,
+        compare: (a, b) => (a === b ? 0 : (a < b ? -1 : 1))
+    }),
+    qrTimeout: 120000, // 2 minute pairing window
+    keepAliveReqTimeout: 15000,
+    emitOwnEvents: false,
+    deviceInfo: {
+        osVersion: "11.0.0",
+        manufacturer: "Google",
+        model: "Bot Server",
+        osBuildNumber: "RD2A.210305.006"
+    }
+});
 
         store.bind(Gfather.ev);
 
